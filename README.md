@@ -60,9 +60,9 @@ DOMFragment objects let you specify a template string or template string-returni
 
 You can specify a properties object and an onRender function. onRender is used to wire up the UI logic like adding functions to buttons. 
 
-The properties are only specified if your template string generator function requires them. You can also specify an onChange function and set an update interval for the DOMFragment to be re-rendered if a change is detected in the properties or template string. 
+The properties are only specified if your template string generator function requires them, otherwise leave undefined. You can also specify an onChange function and set an update interval for the DOMFragment to be re-rendered if a change is detected in the properties or template string. 
 
-If the interval is set to "NEVER", no state monitoring or automatic updating will be created which is fine for rendering quick fragments and manipulating them externally - which I do most often with this. "FRAMERATE" will follow your refresh rate, otherwise it can be set to any millisecond value. This makes for a flexible and optimal rendering tool with optional internal state management.
+If the interval is set to "NEVER" (it is by default), no state monitoring or automatic updating will be created which is fine for rendering quick fragments and manipulating them externally - which I do most often with this. "FRAMERATE" will follow your refresh rate, otherwise it can be set to any millisecond value. This makes for a flexible and optimal rendering tool with optional internal state management.
 
 
 ### ObjectListener usage
