@@ -14,8 +14,8 @@ const State = new StateManager({
   z:{w:3}
 });
 
-let sub1 = State.subscribe('y',(mewy)=>{
-  console.log('new y:',mewy);
+let sub1 = State.subscribe('y',(newy)=>{
+  console.log('new y:',newy);
 });
 
 // ... later ...   
