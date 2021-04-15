@@ -38,14 +38,14 @@ function templateStringGen(props) {
     `;
 }
 
-function onRender() {
-    document.getElementById(htmlprops.id).onclick = () => { 
-      document.getElementById(htmlprops.id).innerHTML = "Clicked!"; 
+function onRender(props) {
+    document.getElementById(props.id).onclick = () => { 
+      document.getElementById(props.id).innerHTML = "Clicked!"; 
     }
 }
 
-function onChange() {
-  console.log('props changed!');
+function onchange(props) {
+  console.log('props changed!', props);
 }
 
 const fragment = new DOMFragment(
@@ -53,7 +53,7 @@ const fragment = new DOMFragment(
                         document.body,
                         htmlprops,
                         onRender,
-                        undefined, //onChange
+                        undefined, //onchange
                         "NEVER" //"FRAMERATE" //1000
                       ); 
 ```
@@ -61,7 +61,7 @@ DOMFragment objects let you specify a template string or template string-returni
 
 You can specify a properties object and an onRender function. onRender is used to wire up the UI logic like adding functions to buttons. 
 
-The properties are only specified if your template string generator function requires them, otherwise leave undefined. You can also specify an onChange function and set an update interval for the DOMFragment to be re-rendered if a change is detected in the properties or template string. Don't use this unless you need to re-render the *entire* node, otherwise just manipulate the divs normally.
+The properties are only specified if your template string generator function requires them, otherwise leave undefined. You can also specify an onchange function and set an update interval for the DOMFragment to be re-rendered if a change is detected in the assigned properties. Don't use this unless you need to re-render the *entire* node, otherwise just manipulate the divs normally.
 
 If the interval is set to "NEVER" (it is by default), no state monitoring or automatic updating will be created which is fine for rendering quick fragments and manipulating them externally - which I do most often with this. "FRAMERATE" will follow your refresh rate, otherwise it can be set to any millisecond value. You can still create keys in its internal object listener (this.listener.addListener(key,object,property) to make responsive elements without completely re-rendering a node if you want to keep everything contained. This makes for a flexible and optimal rendering tool with optional internal state management.
 
