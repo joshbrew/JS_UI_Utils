@@ -5,6 +5,7 @@ There are three main classes in UI_Utils.js: ObjectListener, DOMFragment, and St
 
 If you want to use these in an html file use these in a module script or delete the exports and load the script before/after your main script in the html file.
 
+FYI Read the classes as there are a lot of functions not document here, these are just the most straightforward usages and you don't need the rest.
 
 ### StateManager Usage
 ```
