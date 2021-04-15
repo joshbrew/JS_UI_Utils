@@ -475,6 +475,7 @@ const fragment = new DOMFragment(templateStringGen,document.body,htmlprops,onRen
 
 */
 
+
 export class DOMFragment {
     /**
      * @constructor
@@ -486,8 +487,9 @@ export class DOMFragment {
      * @param {callback} onchange Callback when element is changed.
      * @param {int} propUpdateInterval How often to update properties.
      */
-    constructor(templateStringGen=this.templateStringGen, parentNode=document.body, props={}, onRender=()=>{}, onchange=()=>{}, propUpdateInterval="NEVER") {
+    constructor(templateStringGen=this.templateStringGen, parentNode=document.body, props={}, onRender=(props)=>{}, onchange=(props)=>{}, propUpdateInterval="NEVER") {
         this.onRender = onRender;
+        this.onchange = onchange;
         
         this.parentNode = parentNode;
         if(typeof parentNode === "string") {
@@ -495,7 +497,6 @@ export class DOMFragment {
         }
         this.renderSettings = {
             templateStringGen: templateStringGen,
-            onchange: onchange,
             props: props
         }
         this.templateString = ``;
@@ -529,7 +530,7 @@ export class DOMFragment {
 
             const propsChange = () => {
                 this.updateNode();
-                this.renderSettings.onchange();
+                this.onchange();
             }
 
             this.listener.addListener(
@@ -544,7 +545,9 @@ export class DOMFragment {
         this.renderNode();
     }
 
-    onRender = () => {}
+    onchange = (props=this.renderSettings.props) => {}
+
+    onRender = (props=this.renderSettings.props) => {}
 
     //appendId is the element Id you want to append this fragment to
     appendFragment(HTMLtoAppend, parentNode) {
