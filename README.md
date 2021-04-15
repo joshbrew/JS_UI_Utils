@@ -1,4 +1,4 @@
-# JS_UI_Utils
+# Javascript UI Utilities - Fragments, Object Event Listeners, and Basic State Management
 Some flexible js tools for optimal event dispatchers for objects, basic state management and subscribing, and easy document fragment rendering/scripting.
 
 There are three main classes in UI_Utils.js: ObjectListener, DOMFragment, and StateManager which have simple and complex usage possibilities. Use this to create optimal UI rendering and event dispatching loops. I based a ton of features for [app.brainsatplay.com](app.brainsatplay.com) (formerly [webbci.netlify.app](webbci.netlify.app)) on these scripts to make a cool modular UI with applets and really optimal rendering as it's also handling device streams and real time signal analysis.
