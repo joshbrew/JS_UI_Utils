@@ -89,7 +89,7 @@ Straightforward event listener for generic javascript objects. Allows you to ass
 
 the addListener function wants a custom key string, the object you want to monitor, the object property (string) you want to monitor (leave undefined to monitor the whole object), and also lets you specify an update interval as well as some debug information. The interval is by default "FRAMERATE" which ties it to a requestAnimationFrame loop. You can also set it to any millisecond value.
 
-If you are monitoring large arrays their references are automatically sliced in the listeners for speed. if you are watching an object, it will use slices, and it can slice the arrays one level down in nested objects as well (so one object deeper) but no more.
+If you are monitoring large arrays their references are automatically sliced in the listeners for speed. If you are watching an object, it will slice nested arrays, and it can slice the arrays one level down in nested objects as well (so one object deeper) but no more.
 
 
 
