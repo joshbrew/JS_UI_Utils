@@ -62,8 +62,7 @@ You can specify a properties object and an onRender function. onRender is used t
 
 The properties are only specified if your template string generator function requires them, otherwise leave undefined. You can also specify an onChange function and set an update interval for the DOMFragment to be re-rendered if a change is detected in the properties or template string. Don't use this unless you need to re-render the *entire* node, otherwise just manipulate the divs normally.
 
-If the interval is set to "NEVER" (it is by default), no state monitoring or automatic updating will be created which is fine for rendering quick fragments and manipulating them externally - which I do most often with this. "FRAMERATE" will follow your refresh rate, otherwise it can be set to any millisecond value. This makes for a flexible and optimal rendering tool with optional internal state management.
-
+If the interval is set to "NEVER" (it is by default), no state monitoring or automatic updating will be created which is fine for rendering quick fragments and manipulating them externally - which I do most often with this. "FRAMERATE" will follow your refresh rate, otherwise it can be set to any millisecond value. You can still create keys in its internal object listener (this.listener.addListener(key,object,property) to make responsive elements without completely re-rendering a node if you want to keep everything contained. This makes for a flexible and optimal rendering tool with optional internal state management.
 
 ### ObjectListener usage
 ```
