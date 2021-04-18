@@ -76,16 +76,16 @@ let events = new ObjectListener();
 let x = { y: 1, z: { w: 2 }}
 
 
-events.addListener("y",x,"y");
-events.addListener("z",x,"z");
+events.addListener("sub1",x,"y");
+events.addListener("sub2",x,"z");
 
 //events.addListener(key,object,property,onchange,interval,debug)
 
 x.z.w = 3;
 x.y = 2;
 //See console
-events.remove("y");
-events.remove("z");
+events.remove("sub1");
+events.remove("sub2");
 
 ```
 
