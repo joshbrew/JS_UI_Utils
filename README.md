@@ -1,5 +1,5 @@
 # Javascript UI Utilities - Fragments, Object Event Listeners, and Basic State Management
-Some flexible js tools for optimal event dispatchers for objects, basic state management for subscribing the UI to keyed values, and easy document fragment rendering/scripting. I don't like using most of what's out there (e.g. lit-html, react, etc) and these I developed myself very slowly over time and much to my preference - to mimic some of the most generic UI building/managing tools that make life easier. Nod to @Giveback007 for teaching me some of the ropes too.
+Some flexible js tools for optimal event dispatchers for objects, basic state management for subscribing the UI to keyed values, and easy document fragment rendering/scripting. I don't like using most of what's out there (e.g. lit-html, react, etc) and these I developed myself very slowly over time and much to my preference - to mimic some of the most generic UI building/managing tools that make life easier.
 
 npm: `npm i js_ui_utils`
 
@@ -98,4 +98,6 @@ the addListener function wants a custom key string, the object you want to monit
 If you are monitoring large arrays their references are automatically sliced in the listeners for speed. If you are watching an object, it will slice nested arrays, and it can slice the arrays one level down in nested objects as well (so one object deeper) but no more.
 
 
+#### Acknowledgements
 
+Dovydas Stirpeika - @Giveback007 - showed me the ropes
