@@ -1,5 +1,5 @@
 # Javascript UI Utilities - Fragments, Object Event Listeners, and Basic State Management
-Some flexible js tools for optimal event dispatchers for objects, basic state management for subscribing the UI to keyed values, and easy document fragment rendering/scripting. I don't like using most of what's out there (e.g. lit-html, react, etc) and these I developed myself very slowly over time and much to my preference - to mimic some of the most generic UI building/managing tools that make life easier.
+Some flexible js tools for optimal event dispatchers for objects, basic state management for subscribing the UI to keyed values, and easy document fragment rendering/scripting. I don't like using most of what's out there (e.g. lit-html, react, etc) and these I developed myself very slowly over time and much to my preference - to mimic some of the most generic UI building/managing tools that make life easier. Nod to @Giveback007 for teaching me some of the ropes too.
 
 npm: `npm i js_ui_utils`
 
