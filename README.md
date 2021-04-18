@@ -24,7 +24,7 @@ State.unsubscribe('y',sub1);
 ```
 The state manager is mostly a wrapper for ObjectListener to make it easy to create and subcribe/unsubscribe to keyed values in the state. You can monitor any JSONifiable values/arrays/objects for changes, as well as functions. 
 
-Circular references and large arrays (including arrays 1 layer deep in a nested object) are automatically optimized so the event loop doesn't waste resources to look for updates. Subscriptions fire whenever a value is updated, multiple subscriptions are tied to the same event loop and are referenced by the return subscription value for unsubscribing later.
+Circular references and large arrays (including arrays 1 layer deep in a nested object) are automatically optimized so the event loop doesn't waste resources to look for updates. Subscriptions fire whenever a value is updated, multiple subscriptions to a single property are tied to the same event loop to keep it speedy, and are referenced by the return subscription value for unsubscribing later. Alternatively can use .unsubscribeAll(key)
 
 ### DOMFragment usage
 ```
@@ -56,6 +56,10 @@ const fragment = new DOMFragment(
                         undefined, //onchange
                         "NEVER" //"FRAMERATE" //1000
                       ); 
+                      
+//... later ...
+fragment.deleteNode(); //deletes the rendered fragment if you are done with it.
+
 ```
 DOMFragment objects let you specify a template string or template string-returning function with properties to be rendered as a document fragment to the specified DOMElement node or div id string. 
 
