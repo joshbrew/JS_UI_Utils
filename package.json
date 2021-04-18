@@ -1,0 +1,26 @@
+{
+  "name": "js_ui_utils",
+  "description": "Some flexible js tools for optimal event dispatchers for objects, basic state management for subscribing the UI to keyed values, and easy document fragment rendering/scripting.",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/moothyknight/JS_UI_Utils.git"
+  },
+  "keywords": [
+    "UI",
+    "Utilities",
+    "State",
+    "Fragment",
+    "DOM"
+  ],
+  "author": "Joshua Brewster <brewster.joshua1@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/moothyknight/JS_UI_Utils/issues"
+  },
+  "homepage": "https://github.com/moothyknight/JS_UI_Utils",
+  "main": "UI_Utils.js"
+}
