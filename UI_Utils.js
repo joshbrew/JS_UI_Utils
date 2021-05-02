@@ -467,7 +467,11 @@ function onRender() {
     document.getElementById(htmlprops.id).onclick = () => { document.getElementById(htmlprops.id).innerHTML = "Clicked!"; }
 }
 
-const fragment = new DOMFragment(templateStringGen,document.body,htmlprops,onRender,undefined,"NEVER"); 
+function onChange() {
+  console.log('props changed!');
+}
+
+const fragment = new DOMFragment(templateStringGen,document.body,htmlprops,onRender,onChange,"NEVER"); 
 //Renders a static DOM fragment to the given parent node. 
 // Change propUpdateInterval to "FRAMERATE" or any millisecond value and add an 
 // onchange function to have the html re-render when the props update and have an 
@@ -475,9 +479,9 @@ const fragment = new DOMFragment(templateStringGen,document.body,htmlprops,onRen
 
 */
 
-
 export class DOMFragment {
     /**
+     * @ignore
      * @constructor
      * @alias DOMFragment
      * @description Create a DOM fragment.
@@ -511,10 +515,11 @@ export class DOMFragment {
         if(this.renderSettings.props === {}) {interval = "NEVER";}
         this.node = null;
 
-        this.listener = new ObjectListener();
+        this.listener = undefined;
     
         if((Object.keys(this.renderSettings.props).length > 0) && !(interval === null || interval === undefined || interval === "NEVER")) {
-            console.log("making listeners for ", templateStringGen)
+            console.log("making listeners for ", templateStringGen);
+            this.listener = new ObjectListener();
 
             const templateChange = () => {
                 this.updateNode();
@@ -628,14 +633,13 @@ export class DOMFragment {
 
 
 
-//By Joshua Brewster (MIT)
 //Simple state manager.
 //Set key responses to have functions fire when keyed values change
 //add variables to state with addToState(key, value, keyonchange (optional))
 export class StateManager {
     constructor(init = {},interval="FRAMERATE") { //Default interval is at the browser framerate
         this.data = init;
-        this.data["stateUpdateInterval"] = interval;
+        this.interval = interval;
         this.pushToState={};
         this.prev = Object.assign({},this.data);;
                 
@@ -656,44 +660,40 @@ export class StateManager {
             interval,
         );
         */
-        
-        const stateUpdateResponse = () => {
-            this.listener.listeners.forEach((obj,i) => {
-                obj.interval = this.data["stateUpdateInterval"];
-            });
-        }
 
-        this.listener.addListener(
-            "interval",
-            this.data,
-            "stateUpdateInterval",
-            stateUpdateResponse,
-            interval
-        );
+    }
 
-        const pushToStateResponse = () => {
-            if(Object.keys(this.pushToState).length > 0) {
-                Object.assign(this.prev,this.data);//Temp fix until the global state listener function works as expected
-                Object.assign(this.data,this.pushToState);
-                //console.log("new state: ", this.data); console.log("props set: ", this.pushToState);
-                for (const prop of Object.getOwnPropertyNames(this.pushToState)) {
-                    delete this.pushToState[prop];
-                }
-            }
-        }
-
-        this.listener.addListener(
-            "push",
-            this.pushToState,
-            "__ANY__",
-            pushToStateResponse,
-            interval
-        );
-
+    setInterval(interval="FRAMERATE") {
+        this.interval = interval;
+        this.listener.listeners.forEach((obj,i) => {
+            obj.interval = this.interval;
+        });
     }
 
     //Alternatively just add to the state by doing this.state[key] = value with the state manager instance
     addToState(key, value, onchange=null, debug=false) {
+        if(!this.listener.hasKey('push')) {
+            //we won't add this listener unless we use this function
+            const pushToStateResponse = () => {
+                if(Object.keys(this.pushToState).length > 0) {
+                    Object.assign(this.prev,this.data);//Temp fix until the global state listener function works as expected
+                    Object.assign(this.data,this.pushToState);
+                    //console.log("new state: ", this.data); console.log("props set: ", this.pushToState);
+                    for (const prop of Object.getOwnPropertyNames(this.pushToState)) {
+                        delete this.pushToState[prop];
+                    }
+                }
+            }
+    
+            this.listener.addListener(
+                "push",
+                this.pushToState,
+                "__ANY__",
+                pushToStateResponse,
+                interval
+            );
+    
+        }
         this.data[key] = value;
         if(onchange !== null){
             return this.addSecondaryKeyResponse(key,onchange,debug);
@@ -769,4 +769,3 @@ export class StateManager {
     }
 
 }
-
