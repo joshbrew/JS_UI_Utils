@@ -632,12 +632,12 @@ export class DOMFragment {
 }
 
 
-
+//By Joshua Brewster (MIT)
 //Simple state manager.
 //Set key responses to have functions fire when keyed values change
 //add variables to state with addToState(key, value, keyonchange (optional))
 export class StateManager {
-    constructor(init = {},interval="FRAMERATE") { //Default interval is at the browser framerate
+    constructor(init = {}, interval="FRAMERATE") { //Default interval is at the browser framerate
         this.data = init;
         this.interval = interval;
         this.pushToState={};
@@ -690,7 +690,7 @@ export class StateManager {
                 this.pushToState,
                 "__ANY__",
                 pushToStateResponse,
-                interval
+                this.interval
             );
     
         }
