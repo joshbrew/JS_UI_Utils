@@ -3,15 +3,11 @@
 //Example:
 let events = new ObjectListener();
 let x = { y: 1, z: { w: 2 }}
-
-
 events.addListener("y",x,"y");
 events.addListener("z",x,"z");
-
 x.z.w = 3;
 x.y = 2;
 //See console
-
 */
 
 //By Joshua Brewster (MIT)
@@ -42,7 +38,7 @@ export class ObjectListener {
     hasKey(key) {
         var found = false;
         this.listeners.forEach((item,i) =>{
-            if(item.key === key) {found = true;}
+            if(item.key === key) {found = true; return true;}
         });
         return found;
     }
@@ -101,7 +97,7 @@ export class ObjectListener {
         }
         else {
             var found = this.listeners.find((o,i) => {
-                if(o.name === key) {
+                if(o.key === key) {
                     o.listener.removeFuncs(idx);
                 }
             });
@@ -146,13 +142,13 @@ export class ObjectListener {
         }
         else {
             var indices = [];
-            var found = this.listeners.find((o,i) => {
-                if(o.name === key) {
+            var found = this.listeners.forEach((o,i) => {
+                if(o.key === key) {
                     indices.push(i);
                 }
             });
             indices.reverse().forEach((idx) => {
-                this.listeners[idx].stop();
+                this.listeners[idx].listener.stop();
                 this.listeners.splice(idx,1);
             });
         }
@@ -176,13 +172,17 @@ export class ObjectListenerInstance {
 
 
         this.interval;
-        if(interval <= 0) {
+        if(interval < 10) {
             this.interval = 10; console.log("Min recommended interval set: 10ms");}
         else {
             this.interval = interval;
         }
-        this.checker = requestAnimationFrame(this.check);
 
+        if (typeof window === 'undefined') {
+            setTimeout(()=>{this.check();}, 60)
+        } else {
+            this.checker = requestAnimationFrame(this.check);
+        }
     }
 
     //Main onchange execution
@@ -281,17 +281,25 @@ export class ObjectListenerInstance {
         if(this.running === true) {
             if(this.debug === true) {console.log("checking", this.object, this.propName);}
             if(this.interval === "FRAMERATE"){
-                this.checker = requestAnimationFrame(this.check);
+                if (typeof window === 'undefined') {
+                    setTimeout(()=>{this.check();}, 16)
+                } else {
+                    this.checker = requestAnimationFrame(this.check);
+                }
             }
             else {
-                setTimeout(()=>{this.check},this.interval);
+                setTimeout(()=>{this.check();},this.interval);
             }
         };
     }
 
     start() {
         this.running = true;
-        this.checker = requestAnimationFrame(this.check);
+        if (typeof window === 'undefined') {
+            setTimeout(()=>{this.check();}, 16)
+        } else {
+            this.checker = requestAnimationFrame(this.check);
+        }
     }
 
     stop() {
