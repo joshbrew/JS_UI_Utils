@@ -39,6 +39,13 @@ export class ObjectListener {
         this.listeners.push(listener);
     }
 
+    getListener(key) {
+        let found = this.listeners.find((item,i) =>{
+            if(item.key === key) return true;
+        });
+        return found;
+    }
+
     hasKey(key) {
         var found = false;
         this.listeners.forEach((item,i) =>{
@@ -106,6 +113,18 @@ export class ObjectListener {
                 }
             });
         }
+    }
+
+    //get the array of secondary onchange functions
+    getFuncs = (key=undefined) => {
+        if(key) {
+            var found = this.listeners.find((o,i) => {
+                if(o.key === key) {
+                    return true;
+                }
+            });
+            return found.onchangeFuncs;
+        } else return undefined;
     }
 
     //Stop all or named listeners
@@ -578,6 +597,7 @@ export class StateManager {
         this.data = init;
         this.interval = interval;
         this.pushToState={};
+        this.pushRecord={pushed:[]}; //all setStates between frames
        
         // Allow Updates to State to Be Subscribed To
         this.update = {added:'', removed: '', buffer: new Set()}
@@ -640,7 +660,6 @@ export class StateManager {
     setupSynchronousUpdates() {
         if(!this.listener.hasKey('pushToState')) {
 
-
             //we won't add this listener unless we use this function
             const pushToStateResponse = () => {
                 if(Object.keys(this.pushToState).length > 0) {
@@ -663,6 +682,7 @@ export class StateManager {
             );
 
             this.addToState('update',this.update, this.onUpdate);
+            this.addToState('pushRecord',this.pushRecord,()=>{this.pushRecord.pushed = [];});
 
         }
     }
@@ -688,12 +708,14 @@ export class StateManager {
         return JSON.parse(JSON.stringifyFast(this.data));
     }
 
-    //Synchronous set-state, only updates main state on interval.
+    //Synchronous set-state, only updates main state on interval. Can append arrays instead of replacing them
     setState(updateObj={},appendArrs=true){ //Pass object with keys in. Undefined keys in state will be added automatically. State only notifies of change based on update interval
         //console.log("setting state");
         if(!this.listener.hasKey('pushToState')) {
             this.setupSynchronousUpdates();
         }
+
+        this.pushRecord.pushed.push(JSON.parse(JSON.stringify(updateObj)));
         
         if(appendArrs) {
             for(const prop in updateObj) { //3 object-deep array checks to buffer values instead of overwriting
@@ -733,6 +755,15 @@ export class StateManager {
 
         Object.assign(this.pushToState,updateObj);
         return this.pushToState;
+    }
+
+    //only push to an object that keeps the sequences of updates instead of synchronously updating the whole state.
+    setSequentialState(updateObj={}) {
+        //console.log("setting state");
+        if(!this.listener.hasKey('pushToState')) {
+            this.setupSynchronousUpdates();
+        }
+        this.pushRecord.pushed.push(JSON.parse(JSON.stringify(updateObj)));
     }
 
     //Set main onchange response for the property-specific object listener. Don't touch the state
@@ -778,12 +809,18 @@ export class StateManager {
         if(this.listener.hasKey(key)) this.listener.remove(key);
     }
 
+    //Get all of the onchange functions added via subscribe/addSecondaryKeyResponse
+    getKeySubCallbacks(key) {
+        let callbacks = this.listener.getFuncs(key);
+        return callbacks;
+    }
+
     //Save the return value to provide as the responseIdx in unsubscribe
     subscribe(key, onchange) {
         if(this.data[key] === undefined) {this.addToState(key,null,onchange);}
         else {return this.addSecondaryKeyResponse(key,onchange);}
     }
-
+    
     //Unsubscribe from the given key using the index of the response saved from the subscribe() function
     unsubscribe(key, responseIdx=null) {
         if(responseIdx !== null) this.removeSecondaryKeyResponse(key, responseIdx);
