@@ -587,7 +587,6 @@ export class DOMFragment {
     }
 }
 
-
 //By Joshua Brewster (MIT)
 //Simple state manager.
 //Set key responses to have functions fire when keyed values change
@@ -597,7 +596,7 @@ export class StateManager {
         this.data = init;
         this.interval = interval;
         this.pushToState={};
-        this.pushRecord={pushed:[]}; //all setStates between frames
+        this.pushRecord={pushed:[],callbacks:{}}; //all setStates between frames
        
         // Allow Updates to State to Be Subscribed To
         this.update = {added:'', removed: '', buffer: new Set()}
@@ -682,7 +681,20 @@ export class StateManager {
             );
 
             this.addToState('update',this.update, this.onUpdate);
-            this.addToState('pushRecord',this.pushRecord,()=>{this.pushRecord.pushed = [];});
+            this.addToState('pushRecord',this.pushRecord,(record)=>{
+                record.pushed.forEach((updateObj) => {
+                    for(const prop in updateObj) {
+                        if(this.pushRecord.callbacks[prop]) {
+                            for(const p in this.pushRecord.callbacks) {
+                                this.pushRecord.callbacks[p].forEach((onchange) =>{
+                                    onchange(updateObj[prop]);
+                                });
+                            }
+                        }
+                    }
+                });
+                this.pushRecord.pushed = [];
+            });
 
         }
     }
@@ -704,7 +716,7 @@ export class StateManager {
         }
     }
 
-    getState() { //Return a hard copy of the latest state with reduced values
+    getState() { //Return a hard copy of the latest state with reduced values. Otherwise just use this.state.data
         return JSON.parse(JSON.stringifyFast(this.data));
     }
 
@@ -764,6 +776,39 @@ export class StateManager {
             this.setupSynchronousUpdates();
         }
         this.pushRecord.pushed.push(JSON.parse(JSON.stringify(updateObj)));
+    }
+
+    subscribeSequential(key=undefined,onchange=undefined) {
+        if(key) {
+            if(!this.pushRecord.callbacks[key])
+                this.pushRecord.callbacks[key] = [];
+
+            if(onchange) {
+                this.pushRecord.callbacks[key].push(onchange);
+                return this.pushRecord.callbacks[key].length-1; //get key sub index for unsubscribing
+            } 
+            else return undefined;
+        } else return undefined;
+    }
+
+    unsubscribeSequential(key=undefined,idx=0) {
+        if(key){
+            if(this.pushRecord.callbacks[key]) {
+                if(this.pushRecord.callbacks[key][idx]) {
+                    this.pushRecord.callbacks[key].splice(idx,1);
+                }
+            }
+        }
+    }
+
+    unsubscribeAllSequential(key) {
+        if(key) {
+            if(this.pushRecord.callbacks[key]) {
+                if(this.pushRecord.callbacks[key]) {
+                    delete this.pushRecord.callbacks[key];
+                }
+            }
+        }
     }
 
     //Set main onchange response for the property-specific object listener. Don't touch the state
@@ -838,6 +883,7 @@ export class StateManager {
 
     onUpdate = (update) => {
 
+        console.log(update)
         update.buffer.delete('update')
 
         if (update.added){
