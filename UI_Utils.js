@@ -944,41 +944,70 @@ if(JSON.stringifyFast === undefined) {
         }
 
         function checkValues(key, value) {
-            let val = value;
-            if (val !== null) {
+            let val;
+            if (value != null) {
                 if (typeof value === "object") {
                     //if (key) { updateParents(key, value); }
                     let other = refs.get(val);
                     let c = value.constructor.name;
                     if (other) {
                         return '[Circular Reference]' + other;
-                    } else if(c === "Array" && value.length > 20) { //Cut arrays down to 100 samples for referencing
-                        val = value.slice(value.length-20);
-                        refs.set(val, path.join('.'));
+                    } else if(c === "Array") { //Cut arrays down to 100 samples for referencing
+                        if(value.length > 20) {
+                            val = value.slice(value.length-20);
+                        } else val = value;
+                       // refs.set(val, path.join('.'));
                     } else if (c !== "Object" && c !== "Number" && c !== "String" && c !== "Boolean") { //simplify classes, objects, and functions, point to nested objects for the state manager to monitor those properly
                         val = "instanceof_"+c;
                         refs.set(val, path.join('.'));
-                    } else if (typeof val === 'object') {
+                    } else if (c === 'Object') {
                         let obj = {};
-                        for(const prop in val) {
-                            if(Array.isArray(val[prop])) { obj[prop] = val[prop].slice(val[prop].length-20); } //deal with arrays in nested objects (e.g. means, slices)
-                            else if (typeof val[prop] === 'object') { //additional layer of recursion for 3 object-deep array checks
+                        for(const prop in value) {
+                            if(Array.isArray(value[prop])) { 
+                                if(value[prop][p].length>20)
+                                    obj[prop] = value[prop].slice(value[prop].length-20); 
+                                else obj[prop] = value[prop];
+                            } //deal with arrays in nested objects (e.g. means, slices)
+                            else if (typeof value[prop] === 'object') { //additional layer of recursion for 3 object-deep array checks
                                 obj[prop] = {};
-                                for(const p in val[prop]) {
-                                    if(Array.isArray(val[prop][p])) { obj[prop][p] = val[prop][p].slice(val[prop][p].length-20); }
-                                    else { obj[prop][p] = val[prop][p]; }
+                                for(const p in value[prop]) {
+                                    if(Array.isArray(value[prop][p])) {
+                                        if(value[prop][p].length>20)
+                                            obj[prop][p] = value[prop][p].slice(value[prop][p].length-20); 
+                                        else obj[prop][p] = value[prop][p]
+                                    }
+                                    else { 
+                                        let con = value[prop][p].constructor.name;
+                                        if(con !== "Object" && con !== "Number" && con !== "String" && con !== "Boolean") {
+                                            obj[prop] = "instanceof_"+con;
+                                        } else {
+                                            obj[prop] = value[prop]; 
+                                        }
+                                    }
                                 }
                             }
-                            else { obj[prop] = val[prop]; }
+                            else { 
+                                let con = value[prop].constructor.name;
+                                if(con !== "Object" && con !== "Number" && con !== "String" && con !== "Boolean") {
+                                    obj[prop] = "instanceof_"+con;
+                                } else {
+                                    obj[prop] = value[prop]; 
+                                }
+                            }
                         }
+                        //console.log(obj, value)
+                        val = obj;
+                        //refs.set(val, path.join('.'));
                     }
                     else {
                         refs.set(val, path.join('.'));
                     }
                 }
             }
+            //console.log(value, val)
             return val;
         }
+
 
         return function stringifyFast(obj, space) {
             try {
