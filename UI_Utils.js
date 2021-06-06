@@ -99,6 +99,18 @@ export class ObjectListener {
         return callbackIdx;
     }
 
+    //get the array of secondary onchange functions
+    getFuncs = (key=undefined) => {
+        if(key) {
+            var found = this.listeners.find((o,i) => {
+                if(o.key === key) {
+                    return true;
+                }
+            });
+            return found.onchangeFuncs;
+        } else return undefined;
+    }
+
     //Remove extra onchange functions
     removeFuncs = (key = null, idx = null) => {
         if(key === null) {
@@ -113,18 +125,6 @@ export class ObjectListener {
                 }
             });
         }
-    }
-
-    //get the array of secondary onchange functions
-    getFuncs = (key=undefined) => {
-        if(key) {
-            var found = this.listeners.find((o,i) => {
-                if(o.key === key) {
-                    return true;
-                }
-            });
-            return found.onchangeFuncs;
-        } else return undefined;
     }
 
     //Stop all or named listeners
@@ -192,7 +192,7 @@ export class ObjectListenerInstance {
         this.setListenerRef(propName);
 
         this.running = true;
-
+        this.funcs = 0;
 
         this.interval;
         if(interval < 10) {
@@ -215,19 +215,23 @@ export class ObjectListenerInstance {
 
     //Add extra onchange functions for execution
     addFunc = (onchange=null) => {
+        let sub = 0;
         if(onchange !== null){
-            this.onchangeFuncs.push(onchange);
+            this.onchangeFuncs.push({idx:this.funcs, onchange:onchange});
+            sub=this.funcs;
+            this.funcs++;
         }
-        return this.onchangeFuncs.length-1;
+        return sub;
     }
 
     //Remove extra onchange functions
     removeFuncs(idx = null) {
+        let i = 0;
         if(idx === null) {
             this.onchangeFuncs = [];
         }
-        else if(this.onchangeFuncs[idx] !== undefined) {
-            this.onchangeFuncs.splice(idx,1);
+        else if(this.onchangeFuncs.find((o,j)=>{if(o.idx===idx){ i=j; return true;}}) !== undefined) {
+            this.onchangeFuncs.splice(i,1);
         }
     }
 
@@ -235,8 +239,8 @@ export class ObjectListenerInstance {
     onchangeMulti = (newData) => {
         let onChangeCache = [...this.onchangeFuncs]
         onChangeCache.forEach((func,i) => {
-            if(this.debug === true) { console.log(func); }
-            func(newData);
+            if(this.debug === true) { console.log(func.onchange); }
+            func.onchange(newData);
         });
     }
 
@@ -407,7 +411,6 @@ export function sortObjectByPropName(object) {
     return sorted;
 
 }
-
 //By Joshua Brewster (MIT)
 
 /* 
@@ -587,7 +590,6 @@ export class DOMFragment {
     }
 }
 
-
 //By Joshua Brewster (MIT)
 //Simple state manager.
 //Set key responses to have functions fire when keyed values change
@@ -599,13 +601,6 @@ export class StateManager {
         this.pushToState={};
         this.pushRecord={pushed:[]}; //all setStates between frames
         this.pushCallbacks = {};
-        // Allow Updates to State to Be Subscribed To
-        this.update = {added:'', removed: '', buffer: new Set()}
-        this.updateCallbacks = {
-                added: [],
-                removed: []
-        }
-
 
         this.listener = new ObjectListener();
 
@@ -626,9 +621,6 @@ export class StateManager {
             interval,
         );
         */
-
-
-
     }
 
     setInterval(interval="FRAMERATE") {
@@ -653,11 +645,10 @@ export class StateManager {
             delete this.data[key]
 
             // Log Update
-            this.update.removed = key
-            this.update.buffer.add( key )
+            this.setSequentialState({stateRemoved: key})
     }
 
-    setupSynchronousUpdates() {
+    setupSynchronousUpdates = () => {
         if(!this.listener.hasKey('pushToState')) {
 
             //we won't add this listener unless we use this function
@@ -681,21 +672,21 @@ export class StateManager {
                 this.interval
             );
 
-            this.addToState('update',this.update, this.onUpdate);
             this.addToState('pushRecord',this.pushRecord,(record)=>{
                 record.pushed.forEach((updateObj) => {
                     for(const prop in updateObj) {
                         if(this.pushCallbacks[prop]) {
-                            for(const p in this.pushCallbacks) {
-                                this.pushCallbacks[p].forEach((onchange) =>{
-                                    onchange(updateObj[prop]);
-                                });
-                            }
+                            this.pushCallbacks[prop].forEach((onchange) =>{
+                                onchange(updateObj[prop]);
+                            });
                         }
                     }
                 });
                 this.pushRecord.pushed = [];
             });
+
+
+            this.data.pushCallbacks = this.pushCallbacks;
 
         }
     }
@@ -709,8 +700,7 @@ export class StateManager {
         this.data[key] = value;
 
         // Log Update
-        this.update.added = key
-        this.update.buffer.add( key )
+        this.setSequentialState({stateAdded: key})
 
         if(onchange !== null){
             return this.addSecondaryKeyResponse(key,onchange,debug);
@@ -727,6 +717,8 @@ export class StateManager {
         if(!this.listener.hasKey('pushToState')) {
             this.setupSynchronousUpdates();
         }
+
+        updateObj.stateUpdateTimeStamp = Date.now();
 
         this.pushRecord.pushed.push(JSON.parse(JSON.stringify(updateObj)));
         
@@ -776,11 +768,15 @@ export class StateManager {
         if(!this.listener.hasKey('pushToState')) {
             this.setupSynchronousUpdates();
         }
+        updateObj.stateUpdateTimeStamp = Date.now();
         this.pushRecord.pushed.push(JSON.parse(JSON.stringify(updateObj)));
     }
 
     subscribeSequential(key=undefined,onchange=undefined) {
         if(key) {
+            
+            if(this.data[key] === undefined) {this.addToState(key,null,undefined);}
+
             if(!this.pushCallbacks[key])
                 this.pushCallbacks[key] = [];
 
@@ -877,33 +873,6 @@ export class StateManager {
         this.clearAllKeyResponses(key);
     }
 
-    addUpdateFunction = (added,removed) => {
-        if (added) this.updateCallbacks.added.push(added)
-        if (removed) this.updateCallbacks.removed.push(removed)
-    }
-
-    onUpdate = (update) => {
-
-        console.log(update)
-        update.buffer.delete('update')
-
-        if (update.added){
-            this.updateCallbacks.added.forEach(f => {
-                if (f instanceof Function) f(update.buffer)
-            })
-        }
-
-        if (update.removed){
-            this.updateCallbacks.removed.forEach(f => {
-                if (f instanceof Function) f(update.buffer)
-            })
-        }
-
-        update.added = ''
-        update.removed = ''
-        update.buffer.clear()
-    }
-
 }
 
 
@@ -943,6 +912,7 @@ if(JSON.stringifyFast === undefined) {
             }
         }
 
+        
         function checkValues(key, value) {
             let val;
             if (value != null) {
@@ -956,7 +926,7 @@ if(JSON.stringifyFast === undefined) {
                        // refs.set(val, path.join('.'));
                     }  
                     else if (c.includes("Set")) {
-                        val = Array.from(value)
+                        val = Array.from(value);
                     }  
                     else if (c !== "Object" && c !== "Number" && c !== "String" && c !== "Boolean") { //simplify classes, objects, and functions, point to nested objects for the state manager to monitor those properly
                         val = "instanceof_"+c;
@@ -992,7 +962,7 @@ if(JSON.stringifyFast === undefined) {
                             else { 
                                 let con = value[prop].constructor.name;
                                 if (con.includes("Set")) {
-                                    obj[prop] = Array.from(value[prop])
+                                    obj[prop] = Array.from(value[prop]);
                                 } else if(con !== "Object" && con !== "Number" && con !== "String" && con !== "Boolean") {
                                     obj[prop] = "instanceof_"+con;
                                 } else {
@@ -1014,7 +984,6 @@ if(JSON.stringifyFast === undefined) {
             //console.log(value, val)
             return val;
         }
-
 
         return function stringifyFast(obj, space) {
             try {
