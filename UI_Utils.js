@@ -640,8 +640,9 @@ export class StateManager {
         }    
     }
 
-    removeState(key){
-            this.unsubscribeAll(key);
+    removeState(key, sequential=false){
+            if (sequential) this.unsubscribeAllSequential(key);
+            else this.unsubscribeAll(key);
             delete this.data[key]
 
             // Log Update
@@ -650,7 +651,6 @@ export class StateManager {
 
     setupSynchronousUpdates = () => {
         if(!this.listener.hasKey('pushToState')) {
-
             //we won't add this listener unless we use this function
             const pushToStateResponse = () => {
                 if(Object.keys(this.pushToState).length > 0) {
@@ -673,18 +673,19 @@ export class StateManager {
             );
 
             this.addToState('pushRecord',this.pushRecord,(record)=>{
-                record.pushed.forEach((updateObj) => {
-                    for(const prop in updateObj) {
-                        if(this.pushCallbacks[prop]) {
-                            this.pushCallbacks[prop].forEach((onchange) =>{
-                                onchange(updateObj[prop]);
-                            });
-                        }
-                    }
-                });
-                this.pushRecord.pushed = [];
-            });
 
+                for (let i = record.pushed.length-1; i >= 0; i--){
+                    let updateObj = record.pushed[i]
+                        for(const prop in updateObj) {
+                            if(this.pushCallbacks[prop]) {
+                                this.pushCallbacks[prop].forEach((onchange) =>{
+                                    onchange(updateObj[prop]);
+                                });
+                            }
+                        }
+                    this.pushRecord.pushed.splice(i,1)
+                }
+            });
 
             this.data.pushCallbacks = this.pushCallbacks;
 
@@ -719,7 +720,6 @@ export class StateManager {
         }
 
         updateObj.stateUpdateTimeStamp = Date.now();
-
         this.pushRecord.pushed.push(JSON.parse(JSON.stringify(updateObj)));
         
         if(appendArrs) {
@@ -950,7 +950,7 @@ if(JSON.stringifyFast === undefined) {
                                     else { 
                                         let con = value[prop][p].constructor.name;
                                         if (con.includes("Set")) {
-                                            obj[prop][p] = Array.from(value[prop][p])
+                                            obj[prop][p] = Array.from(value[prop][p]);
                                         } else if(con !== "Object" && con !== "Number" && con !== "String" && con !== "Boolean") {
                                             obj[prop][p] = "instanceof_"+con;
                                         }  else {
