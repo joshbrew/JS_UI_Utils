@@ -161,6 +161,9 @@ export class ObjectListener {
 
     remove(key=null){
         if(key === null) {
+            this.listeners.forEach((listener) => {
+                listener.stop();
+            });
             this.listeners.splice(0,this.listeners.length);
         }
         else {
@@ -326,7 +329,7 @@ export class ObjectListenerInstance {
     start() {
         this.running = true;
         if (typeof window === 'undefined') {
-            setTimeout(()=>{this.check();}, 16)
+            setTimeout(()=>{this.check();}, 16);
         } else {
             this.checker = requestAnimationFrame(this.check);
         }
@@ -411,6 +414,201 @@ export function sortObjectByPropName(object) {
     return sorted;
 
 }
+
+//modified to also cut down the size arrays for faster looping
+if(JSON.stringifyFast === undefined) {
+    //Workaround for objects containing DOM nodes, which can't be stringified with JSON. From: https://stackoverflow.com/questions/4816099/chrome-sendrequest-error-typeerror-converting-circular-structure-to-json
+    JSON.stringifyFast = (function() {
+        const refs = new Map();
+        const parents = [];
+        const path = ["this"];
+
+        function clear() {
+            refs.clear();
+            parents.length = 0;
+            path.length = 1;
+        }
+
+        function updateParents(key, value) { //for json.parse
+            var idx = parents.length - 1;
+            var prev = parents[idx];
+            if (prev[key] === value || idx === 0) {
+                path.push(key);
+                parents.push(value);
+            } else {
+                while (idx-- >= 0) {
+                    prev = parents[idx];
+                    if (prev[key] === value) {
+                        idx += 2;
+                        parents.length = idx;
+                        path.length = idx;
+                        --idx;
+                        parents[idx] = value;
+                        path[idx] = key;
+                        break;
+                    }
+                }
+            }
+        }
+
+        function checkValues(key, value) {
+            let val;
+            if (value != null) {
+                if (typeof value === "object") {
+                    //if (key) { updateParents(key, value); }
+                    let c = value.constructor.name;
+                    if(c === "Array") { //Cut arrays down to 100 samples for referencing
+                        if(value.length > 20) {
+                            val = value.slice(value.length-20);
+                        } else val = value;
+                       // refs.set(val, path.join('.'));
+                    }  
+                    else if (c.includes("Set")) {
+                        val = Array.from(value)
+                    }  
+                    else if (c !== "Object" && c !== "Number" && c !== "String" && c !== "Boolean") { //simplify classes, objects, and functions, point to nested objects for the state manager to monitor those properly
+                        val = "instanceof_"+c;
+                    }
+                    else if (c === 'Object') {
+                        let obj = {};
+                        for(const prop in value) {
+                            if (value[prop] == null){
+                                obj[prop] = value[prop]; 
+                            }
+                            else if(Array.isArray(value[prop])) { 
+                                if(value[prop].length>20)
+                                    obj[prop] = value[prop].slice(value[prop].length-20); 
+                                else obj[prop] = value[prop];
+                            } //deal with arrays in nested objects (e.g. means, slices)
+                            else if (value[prop].constructor.name === 'Object') { //additional layer of recursion for 3 object-deep array checks
+                                obj[prop] = {};
+                                for(const p in value[prop]) {
+                                    if(Array.isArray(value[prop][p])) {
+                                        if(value[prop][p].length>20)
+                                            obj[prop][p] = value[prop][p].slice(value[prop][p].length-20); 
+                                        else obj[prop][p] = value[prop][p];
+                                    }
+                                    else { 
+                                        if (value[prop][p] != null){
+                                            let con = value[prop][p].constructor.name;
+                                            if (con.includes("Set")) {
+                                                obj[prop][p] = Array.from(value[prop][p])
+                                            } else if(con !== "Number" && con !== "String" && con !== "Boolean") {
+                                                obj[prop][p] = "instanceof_"+con; //3-deep nested objects are cut off
+                                            }  else {
+                                                obj[prop][p] = value[prop][p]; 
+                                            }
+                                        } else {
+                                            obj[prop][p] = value[prop][p]; 
+                                        }
+                                    }
+                                }
+                            }
+                            else { 
+                                let con = value[prop].constructor.name;
+                                if (con.includes("Set")) {
+                                    obj[prop] = Array.from(value[prop])
+                                } else if(con !== "Number" && con !== "String" && con !== "Boolean") {
+                                    obj[prop] = "instanceof_"+con;
+                                } else {
+                                    obj[prop] = value[prop]; 
+                                }
+                            }
+                        }
+                        //console.log(obj, value)
+                        val = obj;
+                        //refs.set(val, path.join('.'));
+                    }
+                    else {
+                        val = value;
+                    }
+                } else {
+                    val = value;
+                }
+            }
+            //console.log(value, val)
+            return val;
+        }
+
+        return function stringifyFast(obj, space) {
+            try {
+                //parents.push(obj);
+                return JSON.stringify(obj, checkValues, space);
+            } catch(er) {
+                console.error(obj, er);
+            } finally {
+                //clear();
+            } 
+        }
+    })();
+}
+
+
+
+if(JSON.stringifyWithCircularRefs === undefined) {
+    //Workaround for objects containing DOM nodes, which can't be stringified with JSON. From: https://stackoverflow.com/questions/4816099/chrome-sendrequest-error-typeerror-converting-circular-structure-to-json
+    JSON.stringifyWithCircularRefs = (function() {
+        const refs = new Map();
+        const parents = [];
+        const path = ["this"];
+
+        function clear() {
+        refs.clear();
+        parents.length = 0;
+        path.length = 1;
+        }
+
+        function updateParents(key, value) {
+        var idx = parents.length - 1;
+        var prev = parents[idx];
+        if (prev[key] === value || idx === 0) {
+            path.push(key);
+            parents.push(value);
+        } else {
+            while (idx-- >= 0) {
+            prev = parents[idx];
+            if (prev[key] === value) {
+                idx += 2;
+                parents.length = idx;
+                path.length = idx;
+                --idx;
+                parents[idx] = value;
+                path[idx] = key;
+                break;
+            }
+            }
+        }
+        }
+
+        function checkCircular(key, value) {
+        if (value != null) {
+            if (typeof value === "object") {
+            if (key) { updateParents(key, value); }
+
+            let other = refs.get(value);
+            if (other) {
+                return '[Circular Reference]' + other;
+            } else {
+                refs.set(value, path.join('.'));
+            }
+            }
+        }
+        return value;
+        }
+
+        return function stringifyWithCircularRefs(obj, space) {
+        try {
+            parents.push(obj);
+            return JSON.stringify(obj, checkCircular, space);
+        } finally {
+            clear();
+        }
+        }
+    })();
+}
+
+
+
 //By Joshua Brewster (MIT)
 
 /* 
@@ -446,14 +644,18 @@ export class DOMFragment {
      * @description Create a DOM fragment.
      * @param {function} templateStringGen - Function to generate template string.
      * @param {HTMLElement} parentNode HTML DOM node to append fragment into.
-     * @param {callback} onRender Callback when element is rendered.
+     * @param {callback} onRender Callback when element is rendered. Use to setup html logic via js
      * @param {callback} onchange Callback when element is changed.
      * @param {int} propUpdateInterval How often to update properties.
+     * @param {callback} ondelete Called just before the node is deleted (e.g. to clean up animations)
+     * @param {callback} onresize Called on window resize, leave undefined to not create resize events
      */
-    constructor(templateStringGen=this.templateStringGen, parentNode=document.body, props={}, onRender=(props)=>{}, onchange=(props)=>{}, propUpdateInterval="NEVER") {
+    constructor(templateStringGen=this.templateStringGen, parentNode=document.body, props={}, onRender=(props)=>{}, onchange=(props)=>{}, propUpdateInterval="NEVER", ondelete=(props)=>{}, onresize=undefined) {
         this.onRender = onRender;
         this.onchange = onchange;
-        
+        this.ondelete = ondelete;
+        this.onresize = onresize;
+
         this.parentNode = parentNode;
         if(typeof parentNode === "string") {
             this.parentNode = document.getElementById(parentNode);
@@ -507,11 +709,23 @@ export class DOMFragment {
         }
       
         this.renderNode();
+
+        if(typeof this.onresize === 'function') {
+            this.setNodeResizing();
+        }
+
     }
 
+    //called after a change in props are detected if interval is not set to "NEVER"
     onchange = (props=this.renderSettings.props) => {}
 
+    //called after the html is rendered
     onRender = (props=this.renderSettings.props) => {}
+
+    //called BEFORE the node is removed
+    ondelete = (props=this.renderSettings.props) => {}
+
+    onresize = undefined  //define resizing function
 
     //appendId is the element Id you want to append this fragment to
     appendFragment(HTMLtoAppend, parentNode) {
@@ -524,6 +738,7 @@ export class DOMFragment {
   
     //delete selected fragment. Will delete the most recent fragment if Ids are shared.
     deleteFragment(parentNode,nodeId) {
+        this.ondelete(); //called BEFORE the node is removed
         var node = document.getElementById(nodeId);
         parentNode.removeChild(node);
     }
@@ -531,13 +746,39 @@ export class DOMFragment {
     //Remove Element Parent By Element Id (for those pesky anonymous child fragment containers)
     removeParent(elementId) {
         // Removes an element from the document
+        if(typeof this.onresize === 'function') {
+            this.removeNodeResizing();
+        }
+        this.ondelete();
         var element = document.getElementById(elementId);
         element.parentNode.parentNode.removeChild(element.parentNode);
     }
 
     renderNode(parentNode=this.parentNode){
         this.node = this.appendFragment(this.templateString,parentNode);
-        this.onRender();
+        this.onRender(this.renderSettings.props);
+    }
+
+    setNodeResizing() {
+        if(typeof this.onresize === 'function') {
+            if(window.attachEvent) {
+                window.attachEvent('onresize', this.onresize);
+            }
+            else if(window.addEventListener) {
+                window.addEventListener('resize', this.onresize, true);
+            }
+        }
+    }
+
+    removeNodeResizing() {
+        if(typeof this.onresize === 'function') {
+            if(window.detachEvent) {
+                window.detachEvent('onresize', this.onresize);
+            }
+            else if(window.removeEventListener) {
+                window.removeEventListener('resize', this.onresize, true);
+            }
+        }
     }
 
     updateNode(parentNode=this.parentNode, node=this.node, props=this.props){
@@ -552,12 +793,17 @@ export class DOMFragment {
     }
 
     deleteNode(node=this.node) {
+        if(typeof this.onresize === 'function') {
+            this.removeNodeResizing();
+        }
         if(typeof node === "string"){
+            this.ondelete();
             thisNode = document.getElementById(node);
             thisNode.parentNode.removeChild(thisNode);
             this.node = null;
         }
         else if(typeof node === "object"){
+            this.ondelete();
             node.parentNode.removeChild(node);
             this.node = null;
         }
@@ -589,6 +835,7 @@ export class DOMFragment {
         }
     }
 }
+
 
 //By Joshua Brewster (MIT)
 //Simple state manager.
@@ -674,17 +921,18 @@ export class StateManager {
 
             this.addToState('pushRecord',this.pushRecord,(record)=>{
 
-                for (let i = 0; i < record.pushed.length; i++){
-                    let updateObj = record.pushed[i]
-                        for(const prop in updateObj) {
-                            if(this.pushCallbacks[prop]) {
-                                this.pushCallbacks[prop].forEach((onchange) =>{
-                                    onchange(updateObj[prop]);
-                                });
-                            }
+                let l = record.pushed.length;
+                for (let i = 0; i < l; i++){
+                    let updateObj = record.pushed[i];
+                    for(const prop in updateObj) {
+                        if(this.pushCallbacks[prop]) {
+                            this.pushCallbacks[prop].forEach((o) =>{
+                                o.onchange(updateObj[prop]);
+                            });
                         }
+                    }
                 }
-                this.pushRecord.pushed = [];
+                this.pushRecord.pushed.splice(0,l);
             });
 
             this.data.pushCallbacks = this.pushCallbacks;
@@ -720,7 +968,7 @@ export class StateManager {
         }
 
         updateObj.stateUpdateTimeStamp = Date.now();
-        this.pushRecord.pushed.push(JSON.parse(JSON.stringify(updateObj)));
+        this.pushRecord.pushed.push(JSON.parse(JSON.stringifyWithCircularRefs(updateObj)));
         
         if(appendArrs) {
             for(const prop in updateObj) { //3 object-deep array checks to buffer values instead of overwriting
@@ -781,7 +1029,8 @@ export class StateManager {
                 this.pushCallbacks[key] = [];
 
             if(onchange) {
-                this.pushCallbacks[key].push(onchange);
+                let idx = this.pushCallbacks[key].length;
+                this.pushCallbacks[key].push({idx:idx, onchange:onchange});
                 return this.pushCallbacks[key].length-1; //get key sub index for unsubscribing
             } 
             else return undefined;
@@ -791,12 +1040,17 @@ export class StateManager {
     unsubscribeSequential(key=undefined,idx=0) {
         if(key){
             if(this.pushCallbacks[key]) {
-                if(this.pushCallbacks[key][idx]) {
-                    this.pushCallbacks[key].splice(idx,1);
+                if(this.pushCallbacks[key].find((o,j)=>{
+                    if(o.idx === idx) {
+                        this.pushCallbacks[key].splice(j,1);
+                        return true;
+                    }
+                })) {
                 }
             }
         }
     }
+
 
     unsubscribeAllSequential(key) {
         if(key) {
@@ -848,7 +1102,8 @@ export class StateManager {
 
     //Remove any extra object listeners for a key. Entering "state" will break the state manager's primary response
     clearAllKeyResponses(key=null) {
-        if(this.listener.hasKey(key)) this.listener.remove(key);
+        if(key === null) this.listener.remove(null);
+        else if(this.listener.hasKey(key)) this.listener.remove(key);
     }
 
     //Get all of the onchange functions added via subscribe/addSecondaryKeyResponse
@@ -875,123 +1130,3 @@ export class StateManager {
 
 }
 
-
-//modified to also cut down the size arrays for faster looping
-if(JSON.stringifyFast === undefined) {
-    //Workaround for objects containing DOM nodes, which can't be stringified with JSON. From: https://stackoverflow.com/questions/4816099/chrome-sendrequest-error-typeerror-converting-circular-structure-to-json
-    JSON.stringifyFast = (function() {
-        const refs = new Map();
-        const parents = [];
-        const path = ["this"];
-
-        function clear() {
-            refs.clear();
-            parents.length = 0;
-            path.length = 1;
-        }
-
-        function updateParents(key, value) { //for json.parse
-            var idx = parents.length - 1;
-            var prev = parents[idx];
-            if (prev[key] === value || idx === 0) {
-                path.push(key);
-                parents.push(value);
-            } else {
-                while (idx-- >= 0) {
-                    prev = parents[idx];
-                    if (prev[key] === value) {
-                        idx += 2;
-                        parents.length = idx;
-                        path.length = idx;
-                        --idx;
-                        parents[idx] = value;
-                        path[idx] = key;
-                        break;
-                    }
-                }
-            }
-        }
-
-        
-        function checkValues(key, value) {
-            let val;
-            if (value != null) {
-                if (typeof value === "object") {
-                    //if (key) { updateParents(key, value); }
-                    let c = value.constructor.name;
-                    if(c === "Array") { //Cut arrays down to 100 samples for referencing
-                        if(value.length > 20) {
-                            val = value.slice(value.length-20);
-                        } else val = value;
-                       // refs.set(val, path.join('.'));
-                    }  
-                    else if (c.includes("Set")) {
-                        val = Array.from(value);
-                    }  
-                    else if (c !== "Object" && c !== "Number" && c !== "String" && c !== "Boolean") { //simplify classes, objects, and functions, point to nested objects for the state manager to monitor those properly
-                        val = "instanceof_"+c;
-                    }
-                    else if (c === 'Object') {
-                        let obj = {};
-                        for(const prop in value) {
-                            if(Array.isArray(value[prop])) { 
-                                if(value[prop].length>20)
-                                    obj[prop] = value[prop].slice(value[prop].length-20); 
-                                else obj[prop] = value[prop];
-                            } //deal with arrays in nested objects (e.g. means, slices)
-                            else if (value[prop].constructor.name === 'Object') { //additional layer of recursion for 3 object-deep array checks
-                                obj[prop] = {};
-                                for(const p in value[prop]) {
-                                    if(Array.isArray(value[prop][p])) {
-                                        if(value[prop][p].length>20)
-                                            obj[prop][p] = value[prop][p].slice(value[prop][p].length-20); 
-                                        else obj[prop][p] = value[prop][p];
-                                    }
-                                    else { 
-                                        let con = value[prop][p].constructor.name;
-                                        if (con.includes("Set")) {
-                                            obj[prop][p] = Array.from(value[prop][p]);
-                                        } else if(con !== "Object" && con !== "Number" && con !== "String" && con !== "Boolean") {
-                                            obj[prop][p] = "instanceof_"+con;
-                                        }  else {
-                                            obj[prop][p] = value[prop][p]; 
-                                        }
-                                    }
-                                }
-                            }
-                            else { 
-                                let con = value[prop].constructor.name;
-                                if (con.includes("Set")) {
-                                    obj[prop] = Array.from(value[prop]);
-                                } else if(con !== "Object" && con !== "Number" && con !== "String" && con !== "Boolean") {
-                                    obj[prop] = "instanceof_"+con;
-                                } else {
-                                    obj[prop] = value[prop]; 
-                                }
-                            }
-                        }
-                        //console.log(obj, value)
-                        val = obj;
-                        //refs.set(val, path.join('.'));
-                    }
-                    else {
-                        val = value;
-                    }
-                } else {
-                    val = value;
-                }
-            }
-            //console.log(value, val)
-            return val;
-        }
-
-        return function stringifyFast(obj, space) {
-            try {
-                parents.push(obj);
-                return JSON.stringify(obj, checkValues, space);
-            } finally {
-                clear();
-            }
-        }
-    })();
-}
