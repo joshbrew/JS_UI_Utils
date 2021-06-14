@@ -608,7 +608,6 @@ if(JSON.stringifyWithCircularRefs === undefined) {
 }
 
 
-
 //By Joshua Brewster (MIT)
 
 /* 
@@ -710,10 +709,6 @@ export class DOMFragment {
       
         this.renderNode();
 
-        if(typeof this.onresize === 'function') {
-            this.setNodeResizing();
-        }
-
     }
 
     //called after a change in props are detected if interval is not set to "NEVER"
@@ -757,6 +752,9 @@ export class DOMFragment {
     renderNode(parentNode=this.parentNode){
         this.node = this.appendFragment(this.templateString,parentNode);
         this.onRender(this.renderSettings.props);
+        if(typeof this.onresize === 'function') {
+            this.setNodeResizing();
+        }
     }
 
     setNodeResizing() {
@@ -835,6 +833,7 @@ export class DOMFragment {
         }
     }
 }
+
 
 
 //By Joshua Brewster (MIT)
