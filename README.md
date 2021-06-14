@@ -53,7 +53,7 @@ function onchange(props) { //optional if you want to be able to auto-update the 
 function ondelete(props) { //called before the node is deleted, use to clean up animation loops and event listeners
 }
 
-function onresize(props) { //adds a resize listener to the window, this is automatically cleaned up when you delete the node.
+function onresize(props=props) { //adds a resize listener to the window, this is automatically cleaned up when you delete the node. Set the props as the default variable to pass them in correctly for this one.
 }
 
 const fragment = new DOMFragment(
