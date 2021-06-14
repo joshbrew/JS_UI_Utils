@@ -34,26 +34,26 @@ let htmlprops = {
   id:'template1'
 };
 
-function templateStringGen(props) {
+function templateStringGen(props) { //write your html in a template string
     return `
     <div id=${props.id}>Clickme</div>
     `;
 }
 
-function onRender(props) {
+function onRender(props) { //setup html
     document.getElementById(props.id).onclick = () => { 
       document.getElementById(props.id).innerHTML = "Clicked!"; 
     }
 }
 
-function onchange(props) {
+function onchange(props) { //optional if you want to be able to auto-update the html with changes to the properties, not recommended if you only want to update single divs
   console.log('props changed!', props);
 }
 
-function ondelete(props) {
+function ondelete(props) { //called before the node is deleted, use to clean up animation loops and event listeners
 }
 
-function onresize(props) {
+function onresize(props) { //adds a resize listener to the window, this is automatically cleaned up when you delete the node.
 }
 
 const fragment = new DOMFragment(
