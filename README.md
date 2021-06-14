@@ -109,4 +109,5 @@ If you are monitoring large arrays their references are automatically sliced in 
 #### Acknowledgements
 
 Dovydas Stirpeika - @Giveback007 - showed me the ropes
+
 Garrett Flynn - @GarretMFlynn - tons of stress testing and edits/requests
