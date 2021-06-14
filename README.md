@@ -24,9 +24,9 @@ let sub1 = State.subscribe('y',(newy)=>{
 // ... later ...   
 State.unsubscribe('y',sub1);
 ```
-The state manager is mostly a wrapper for ObjectListener to make it easy to create and subcribe/unsubscribe to keyed values in the state. You can monitor any JSONifiable values/arrays/objects for changes, as well as functions. 
+The state manager is mostly a wrapper for ObjectListener to make it easy to create and subcribe/unsubscribe to keyed values in the state. You can monitor any JSONifiable values/arrays/objects for changes, as well as functions. There is now a subscribeSequential function too that allows you to fire functions for sequences of updates pushed between frames, this acts independently of the main state loop by simply pushing to an array of objects in state then running sequential functions based on which properties were pushed. Now it can handle proper game inputs etc.
 
-Circular references and large arrays (including arrays 1 layer deep in a nested object) are automatically optimized so the event loop doesn't waste resources to look for updates. Subscriptions fire whenever a value is updated, multiple subscriptions to a single property are tied to the same event loop to keep it speedy, and are referenced by the return subscription value for unsubscribing later. Alternatively can use .unsubscribeAll(key)
+Circular references and large arrays (including arrays up to 3 layers deep in a nested object) are automatically optimized so the event loop doesn't waste resources to look for updates. Subscriptions fire whenever a value is updated, multiple subscriptions to a single property are tied to the same event loop to keep it speedy, and are referenced by the return subscription value for unsubscribing later. Alternatively can use .unsubscribeAll(key)
 
 ### DOMFragment usage
 ```
@@ -34,20 +34,26 @@ let htmlprops = {
   id:'template1'
 };
 
-function templateStringGen(props) {
+function templateStringGen(props) { //write your html in a template string
     return `
     <div id=${props.id}>Clickme</div>
     `;
 }
 
-function onRender(props) {
+function onRender(props) { //setup html
     document.getElementById(props.id).onclick = () => { 
       document.getElementById(props.id).innerHTML = "Clicked!"; 
     }
 }
 
-function onchange(props) {
+function onchange(props) { //optional if you want to be able to auto-update the html with changes to the properties, not recommended if you only want to update single divs
   console.log('props changed!', props);
+}
+
+function ondelete(props) { //called before the node is deleted, use to clean up animation loops and event listeners
+}
+
+function onresize(props) { //adds a resize listener to the window, this is automatically cleaned up when you delete the node.
 }
 
 const fragment = new DOMFragment(
@@ -56,7 +62,9 @@ const fragment = new DOMFragment(
                         htmlprops,
                         onRender,
                         undefined, //onchange
-                        "NEVER" //"FRAMERATE" //1000
+                        "NEVER", //"FRAMERATE" //1000
+                        ondelete,
+                        onresize
                       ); 
                       
 //... later ...
@@ -101,3 +109,5 @@ If you are monitoring large arrays their references are automatically sliced in 
 #### Acknowledgements
 
 Dovydas Stirpeika - @Giveback007 - showed me the ropes
+
+Garrett Flynn - @GarretMFlynn - tons of stress testing and edits/requests
