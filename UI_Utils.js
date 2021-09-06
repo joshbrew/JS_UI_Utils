@@ -222,9 +222,11 @@ export class ObjectListener {
     }
 }
 
+
+//Instance of an object listener. This will subscribe to object properties (or whole objects) and run attached functions when a change is detected.
 //Instance of an object listener. This will subscribe to object properties (or whole objects) and run attached functions when a change is detected.
 export class ObjectListenerInstance {
-    constructor(object,propName="__ANY__",onchange=this.onchange,interval="FRAMERATE",debug=false) {
+    constructor(object,propName="__ANY__",onchange=this.onchange,interval="FRAMERATE",debug=false,startRunning=true) {
         this.debug=debug;
 
         this.onchange = onchange; //Main onchange function
@@ -235,7 +237,7 @@ export class ObjectListenerInstance {
         this.propOld = undefined;
         this.setListenerRef(propName);
 
-        this.running = true;
+        this.running = startRunning;
         this.funcs = 0;
 
         this.interval;
@@ -245,10 +247,12 @@ export class ObjectListenerInstance {
             this.interval = interval;
         }
 
-        if (typeof window === 'undefined') {
-            setTimeout(()=>{this.check();}, 60)
-        } else {
-            this.checker = requestAnimationFrame(this.check);
+        if(startRunning === true) {
+            if (typeof window === 'undefined') {
+                setTimeout(()=>{this.check();}, 60)
+            } else {
+                this.checker = requestAnimationFrame(this.check);
+            }
         }
     }
 
@@ -382,6 +386,7 @@ export class ObjectListenerInstance {
     }
 
 }
+
 
 
 //This only really matters in Chrome and one other browser
@@ -1135,7 +1140,6 @@ export class StateManager {
             }
         }
     }
-
 
     unsubscribeAllSequential(key) {
         if(key) {
