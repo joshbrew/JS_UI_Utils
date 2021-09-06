@@ -1220,7 +1220,7 @@ export class StateManager {
     }
 
     //stops the listener event loops without clearing the keys.
-    stopListeners(key=null) {
+    stop(key=null) {
         this.listener.stop(key);
     }
 
