@@ -36,7 +36,7 @@ export class ObjectListener {
         }
 
         var key = listenerKey;
-        if(key === null) {
+        if(key == null) {
             key = Math.floor(Math.random()*100000);
         }
         if(this.synchronous === true) startRunning = false; //negate this in case of synchronous runtime
@@ -70,7 +70,7 @@ export class ObjectListener {
     }
 
     onchange(key=null,newCallback=null){
-        if(key === null) {
+        if(key == null) {
             this.listeners.forEach((obj,i) => {
                 obj.listener.onchange = newCallback;
             });
@@ -88,7 +88,7 @@ export class ObjectListener {
     addFunc = (key=null,newCallback=null, start=true) => {
         var callbackIdx = null;
         if(newCallback !== null){
-            if(key === null) {
+            if(key == null) {
                 this.listeners.forEach((obj,i) => {
                     callbackIdx = obj.listener.addFunc(newCallback);
                     if(obj.listener.running == false && start == true)
@@ -122,7 +122,7 @@ export class ObjectListener {
 
     //Remove extra onchange functions
     removeFuncs = (key = null, idx = null, stop=false) => {
-        if(key === null) {
+        if(key == null) {
             this.listeners.forEach((obj,i) => {
                 obj.listener.removeFuncs(idx);
             });
@@ -142,7 +142,7 @@ export class ObjectListener {
     //Stop all or named listeners
     stop(key=null) {
         if(this.synchronous) this.stopSync();
-        if(key === null) {
+        if(key == null) {
             this.listeners.forEach((obj,i) => {
                 obj.listener.stop();
             });
@@ -159,7 +159,7 @@ export class ObjectListener {
     //Restart all or named listeners
     start(key=null) {
         if(this.synchronous) this.stopSync();
-        if(key === null) {
+        if(key == null) {
             this.listeners.forEach((obj,i) => {
                 obj.listener.start();
             });
@@ -201,7 +201,7 @@ export class ObjectListener {
     }   
 
     remove(key=null){
-        if(key === null) {
+        if(key == null) {
             this.listeners.forEach((listener) => {
                 listener.stop();
             });
@@ -1015,7 +1015,7 @@ export class StateManager {
     }
 
     //Alternatively just add to the state by doing this.state[key] = value with the state manager instance
-    addToState(key, value, onchange=null, debug=false) {
+    addToState(key, value, onchange=null, debug=false, startRunning=this.defaultStartListenerEventLoop) {
         if(!this.listener.hasKey('pushToState')) {
             this.setupSynchronousUpdates();
         }
@@ -1026,7 +1026,7 @@ export class StateManager {
         this.setSequentialState({stateAdded: key})
 
         if(onchange !== null){
-            return this.addSecondaryKeyResponse(key,onchange,debug);
+            return this.addSecondaryKeyResponse(key,onchange,debug,startRunning);
         }
     }
 
@@ -1148,25 +1148,25 @@ export class StateManager {
     }
 
     //Set main onchange response for the property-specific object listener. Don't touch the state
-    setPrimaryKeyResponse(key=null, onchange=null, debug=false, startRunning=true) {
+    setPrimaryKeyResponse(key=null, onchange=null, debug=false, startRunning=this.defaultStartListenerEventLoop) {
         if(onchange !== null){
             if(this.listener.hasKey(key)){
                 this.listener.onchange(key, onchange);
             }
             else if(key !== null){
-                this.listener.addListener(key, this.data, key, onchange, this.data["stateUpdateInterval"], debug, this.defaultStartListenerEventLoop);
+                this.listener.addListener(key, this.data, key, onchange, this.data["stateUpdateInterval"], debug, startRunning);
             }
         }
     }
 
     //Add extra onchange responses to the object listener for a set property. Use state key for state-wide change responses
-    addSecondaryKeyResponse(key=null, onchange=null, debug=false, startRunning=true) {
+    addSecondaryKeyResponse(key=null, onchange=null, debug=false, startRunning=this.defaultStartListenerEventLoop) {
         if(onchange !== null){
             if(this.listener.hasKey(key)){
                 return this.listener.addFunc(key, onchange);
             }
             else if(key !== null){
-                this.listener.addListener(key, this.data,key,()=>{},this.data["stateUpdateInterval"], debug, this.defaultStartListenerEventLoop);
+                this.listener.addListener(key, this.data,key,()=>{},this.data["stateUpdateInterval"], debug, startRunning);
                 return this.listener.addFunc(key, onchange);
             }
             else { return this.listener.addFunc("state", onchange);}
@@ -1220,9 +1220,8 @@ export class StateManager {
     }
 
     //stops the listener event loops without clearing the keys.
-    stopListeners() {
-        this.listener.stop();
+    stopListeners(key=null) {
+        this.listener.stop(key);
     }
 
 }
-
