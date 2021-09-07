@@ -222,8 +222,6 @@ export class ObjectListener {
     }
 }
 
-
-//Instance of an object listener. This will subscribe to object properties (or whole objects) and run attached functions when a change is detected.
 //Instance of an object listener. This will subscribe to object properties (or whole objects) and run attached functions when a change is detected.
 export class ObjectListenerInstance {
     constructor(object,propName="__ANY__",onchange=this.onchange,interval="FRAMERATE",debug=false,startRunning=true) {
@@ -314,12 +312,14 @@ export class ObjectListenerInstance {
     }
 
     check = () => {
+        let changed = false;
         if(this.propName === "__ANY__" || this.propName === null || this.propName === undefined){
             if(this.propOld !== JSON.stringifyFast(this.object)){
                 if(this.debug === true) { console.log("onchange: ", this.onchange); }
                 this.onchange(this.object);
                 if(this.onchangeFuncs.length > 0) { this.onchangeMulti(this.object); }
                 this.setListenerRef(this.propName);
+                changed = true;
             }
         }
         else if(Array.isArray(this.object[this.propName])) { //cut arrays down for speed
@@ -328,6 +328,7 @@ export class ObjectListenerInstance {
                 this.onchange(this.object[this.propName]);
                 if(this.onchangeFuncs.length > 0) { this.onchangeMulti(this.object[this.propName]); }
                 this.setListenerRef(this.propName);
+                changed = true;
             }
         }
         else if(typeof this.object[this.propName] === "object") {
@@ -339,6 +340,7 @@ export class ObjectListenerInstance {
                     this.onchangeMulti(this.object[this.propName]); 
                 }
                 this.setListenerRef(this.propName);
+                changed = true;
             }
         }
         else if(typeof this.object[this.propName] === "function") {
@@ -347,6 +349,7 @@ export class ObjectListenerInstance {
                 this.onchange(this.object[this.propName].toString());
                 if(this.onchangeFuncs.length > 0) { this.onchangeMulti(this.object[this.propName].toString()); }
                 this.setListenerRef(this.propName);
+                changed = true;
             }
         }
         else if(this.object[this.propName] !== this.propOld) {
@@ -354,6 +357,7 @@ export class ObjectListenerInstance {
             this.onchange(this.object[this.propName]);
             if(this.onchangeFuncs.length > 0) { this.onchangeMulti(this.object[this.propName]); }
             this.setListenerRef(this.propName);
+            changed = true;
         }
         
         if(this.running === true) {
@@ -369,6 +373,8 @@ export class ObjectListenerInstance {
                 setTimeout(()=>{this.check();},this.interval);
             }
         };
+
+        return changed;
     }
 
     start() {
@@ -926,6 +932,7 @@ export class StateManager {
         this.pushToState={};
         this.pushRecord={pushed:[]}; //all setStates between frames
         this.pushCallbacks = {};
+        this.triggers = {};
 
         this.listener = new ObjectListener();
         this.defaultStartListenerEventLoop = defaultKeyEventLoop;
@@ -1020,7 +1027,7 @@ export class StateManager {
     }
 
     //Alternatively just add to the state by doing this.state[key] = value with the state manager instance
-    addToState(key, value, onchange=null, debug=false, startRunning=this.defaultStartListenerEventLoop) {
+    addToState(key, value, onchange=null, startRunning=this.defaultStartListenerEventLoop, debug=false) {
         if(!this.listener.hasKey('pushToState')) {
             this.setupSynchronousUpdates();
         }
@@ -1040,7 +1047,7 @@ export class StateManager {
     }
 
     //Synchronous set-state, only updates main state on interval. Can set to trigger now instead of waiting on interval. Also can append arrays in state instead of replacing them
-    setState(updateObj={}, trigger=false, appendArrs=false){ //Pass object with keys in. Undefined keys in state will be added automatically. State only notifies of change based on update interval
+    setState(updateObj={}, appendArrs=false){ //Pass object with keys in. Undefined keys in state will be added automatically. State only notifies of change based on update interval
         //console.log("setting state");
         if(!this.listener.hasKey('pushToState')) {
             this.setupSynchronousUpdates();
@@ -1087,17 +1094,53 @@ export class StateManager {
 
         Object.assign(this.pushToState,updateObj);
 
-        if(trigger === true) {
-            Object.assign(this.data,this.pushToState)
-            for (const prop of Object.getOwnPropertyNames(this.pushToState)) {
-                let ref = this.listener.getListener(prop);
-                if(ref) ref.listener.check();
+        return this.pushToState;
+    }
+
+    //setState and run triggers, allows subscribing to the same key in state without interrupting anything
+    setState_T(updateObj={},appendArrs=false) {
+        
+        this.setState(updateObj,appendArrs);
+
+        if(Object.keys(this.pushToState).length > 0) {
+            Object.assign(this.data,this.pushToState);
+            for (const prop of Object.getOwnPropertyNames(updateObj)) {
+                if(this.triggers[key]) {
+                    this.triggers[key].forEach((obj)=>{
+                        obj.onchange(updateObj[key]);
+                    });
+                }
                 delete this.pushToState[prop];
             }
-            
         }
 
-        return this.pushToState;
+    }
+
+    //Trigger-only functions on otherwise looping listeners
+    subscribeTrigger(key=undefined,onchange=(prop)=>{}) {
+        if(key) {
+            if(!this.triggers[key]) {
+                this.triggers[key] = [];
+            }
+            this.triggers[key].push({idx:this.triggers[key].length-1, onchange:onchange});
+            return this.triggers[key].length-1;
+        } else return undefined;
+    }
+
+    //Delete specific trigger functions for a key
+    unsubscribeTrigger(key=undefined,sub=0) {
+        let idx = undefined;
+        let obj = this.triggers[key].find((o)=>{
+            if(o.idx===sub) {return true;}
+        });
+        if(obj) this.triggers[key].splice(idx,1);
+    }
+
+    //Remove all triggers for a key
+    unsubscribeAllTriggers(key) {
+        if(key && this.triggers[key]) {
+            delete this.triggers[key];
+        }
     }
 
     //only push to an object that keeps the sequences of updates instead of synchronously updating the whole state.
@@ -1127,11 +1170,11 @@ export class StateManager {
         } else return undefined;
     }
 
-    unsubscribeSequential(key=undefined,idx=0) {
+    unsubscribeSequential(key=undefined,sub=0) {
         if(key){
             if(this.pushCallbacks[key]) {
                 if(this.pushCallbacks[key].find((o,j)=>{
-                    if(o.idx === idx) {
+                    if(o.idx === sub) {
                         this.pushCallbacks[key].splice(j,1);
                         return true;
                     }
@@ -1202,7 +1245,7 @@ export class StateManager {
     }
 
     //Save the return value to provide as the responseIdx in unsubscribe
-    subscribe(key, onchange) {
+    subscribe(key, onchange, startRunning=true) {
         if(this.data[key] === undefined) {this.addToState(key,null,onchange);}
         else {return this.addSecondaryKeyResponse(key,onchange);}
     }
