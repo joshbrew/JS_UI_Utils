@@ -14,7 +14,7 @@ x.y = 2;
 
 */
 
-//By Joshua Brewster (MIT)
+//By Joshua Brewster (MIT License)
 
 //Create instance and then call instance.addListener(listenerName,objectToListenTo,propToListenTo,onchange,interval).
 //name, propToListenTo, onchange, and interval are optional (leave or set as undefined). Onchange is a custom callback just like for other event listeners. Set a name to make it easier to start and stop or edit each listener.
@@ -394,7 +394,6 @@ export class ObjectListenerInstance {
 }
 
 
-
 //This only really matters in Chrome and one other browser
 export function sortObjectByValue(object) { //Sorts number and string objects by numeric value. Strings have charcodes summed for comparison. Objects and functions are stringified.
     var sortable = [];
@@ -725,7 +724,7 @@ export class DOMFragment {
      * @constructor
      * @alias DOMFragment
      * @description Create a DOM fragment.
-     * @param {function} templateStringGen - Function to generate template string.
+     * @param {function} templateStringGen - Function to generate template string (or template string itself, or Element)
      * @param {HTMLElement} parentNode HTML DOM node to append fragment into.
      * @param {callback} onRender Callback when element is rendered. Use to setup html logic via js
      * @param {callback} onchange Callback when element is changed.
@@ -747,6 +746,7 @@ export class DOMFragment {
             templateStringGen: templateStringGen,
             props: props
         }
+        this.props = this.renderSettings.props;
         this.templateString = ``;
         if(typeof templateStringGen === 'function') {
             this.templateString = templateStringGen(props);
@@ -807,12 +807,19 @@ export class DOMFragment {
     onresize = undefined  //define resizing function
 
     //appendId is the element Id you want to append this fragment to
-    appendFragment(HTMLtoAppend, parentNode) {
-        var template = document.createElement('template');
-        template.innerHTML = HTMLtoAppend;
-        var fragment = template.content;
-        parentNode.appendChild(fragment);
+    appendFragment(toAppend, parentNode) {
+        if (this.isElement(toAppend)) parentNode.appendChild(toAppend);
+        else {
+            var template = document.createElement('template');
+            template.innerHTML = toAppend;
+            var fragment = template.content;
+            parentNode.appendChild(fragment);
+        }
         return parentNode.children[parentNode.children.length-1];
+    }
+
+    isElement = (element) => {
+        return element instanceof Element || element instanceof HTMLDocument;  
     }
   
     //delete selected fragment. Will delete the most recent fragment if Ids are shared.
@@ -912,8 +919,9 @@ export class DOMFragment {
             });
         }
         else if (typeof styles === 'function') {
-            let stylehtml = styles();
-            node.insertAdjacentHTML('afterbegin',stylehtml);
+            let styleResult = styles();
+            if (typeof styleResult === 'string') node.insertAdjacentHTML('afterbegin',styleResult);
+            else node.insertAdjacentElement('afterbegin',styleResult);
         }
     }
 }
@@ -921,7 +929,7 @@ export class DOMFragment {
 
 
 
-//By Joshua Brewster (MIT)
+//By Joshua Brewster (MIT License)
 //Simple state manager.
 //Set key responses to have functions fire when keyed values change
 //add variables to state with addToState(key, value, keyonchange (optional))
@@ -1028,7 +1036,7 @@ export class StateManager {
 
     //Alternatively just add to the state by doing this.state[key] = value with the state manager instance
     addToState(key, value, onchange=null, startRunning=this.defaultStartListenerEventLoop, debug=false) {
-        if(!this.listener.hasKey('pushToState')) {
+        if(!this.listener.hasKey('pushToState') && this.defaultStartListenerEventLoop) {
             this.setupSynchronousUpdates();
         }
 
@@ -1049,7 +1057,7 @@ export class StateManager {
     //Synchronous set-state, only updates main state on interval. Can set to trigger now instead of waiting on interval. Also can append arrays in state instead of replacing them
     setState(updateObj={}, appendArrs=false){ //Pass object with keys in. Undefined keys in state will be added automatically. State only notifies of change based on update interval
         //console.log("setting state");
-        if(!this.listener.hasKey('pushToState')) {
+        if(!this.listener.hasKey('pushToState') && this.defaultStartListenerEventLoop) {
             this.setupSynchronousUpdates();
         }
 
@@ -1093,36 +1101,33 @@ export class StateManager {
         }
 
         Object.assign(this.pushToState,updateObj);
+        
+        if(Object.keys(this.triggers).length > 0) {
+            // Object.assign(this.data,this.pushToState);
+            for (const prop of Object.getOwnPropertyNames(this.triggers)) {
+                if(this.pushToState[prop]) {
+                    this.data[prop] = this.pushToState[prop]
+                    delete this.pushToState[prop];
+                    this.triggers[prop].forEach((obj)=>{
+                        obj.onchange(this.data[prop]);
+                    });
+                }
+            }
+        }
 
         return this.pushToState;
     }
 
-    //setState and run triggers, allows subscribing to the same key in state without interrupting anything
-    setState_T(updateObj={},appendArrs=false) {
-        
-        this.setState(updateObj,appendArrs);
-
-        if(Object.keys(this.pushToState).length > 0) {
-            Object.assign(this.data,this.pushToState);
-            for (const prop of Object.getOwnPropertyNames(updateObj)) {
-                if(this.triggers[key]) {
-                    this.triggers[key].forEach((obj)=>{
-                        obj.onchange(updateObj[key]);
-                    });
-                }
-                delete this.pushToState[prop];
-            }
-        }
-
-    }
-
     //Trigger-only functions on otherwise looping listeners
-    subscribeTrigger(key=undefined,onchange=(prop)=>{}) {
+    subscribeTrigger(key=undefined,onchange=(key)=>{}) {
+
+        // console.error('SUBSCRIBING')
         if(key) {
             if(!this.triggers[key]) {
                 this.triggers[key] = [];
             }
-            this.triggers[key].push({idx:this.triggers[key].length-1, onchange:onchange});
+            let l = this.triggers[key].length;
+            this.triggers[key].push({idx:l, onchange:onchange});
             return this.triggers[key].length-1;
         } else return undefined;
     }
@@ -1154,6 +1159,8 @@ export class StateManager {
     }
 
     subscribeSequential(key=undefined,onchange=undefined) {
+        // console.error('SUBSCRIBING')
+
         if(key) {
             
             if(this.data[key] === undefined) {this.addToState(key,null,undefined);}
@@ -1246,7 +1253,9 @@ export class StateManager {
 
     //Save the return value to provide as the responseIdx in unsubscribe
     subscribe(key, onchange, startRunning=true) {
-        if(this.data[key] === undefined) {this.addToState(key,null,onchange);}
+        // console.error('SUBSCRIBING')
+
+        if(this.data[key] === undefined) {this.addToState(key,null,onchange,startRunning);}
         else {return this.addSecondaryKeyResponse(key,onchange);}
     }
     
@@ -1258,6 +1267,7 @@ export class StateManager {
 
     unsubscribeAll(key) { // Removes the listener for the key (including the animation loop)
         this.clearAllKeyResponses(key);
+        if(this.data[key]) delete this.data[key];
     }
 
     //runs only one animation frame to check all state keys
