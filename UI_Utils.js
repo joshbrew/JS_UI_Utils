@@ -482,10 +482,8 @@ if(JSON.stringifyFast === undefined) {
 
         function updateParents(key, value) {
             var idx = parents.length - 1;
-            //console.log(idx, parents[idx])
             if(parents[idx]){
                 var prev = parents[idx];
-                //console.log(value); 
                 if (prev[key] === value || idx === 0) {
                     path.push(key);
                     parents.push(value.pushed);
@@ -669,6 +667,7 @@ if(JSON.stringifyWithCircularRefs === undefined) {
         }
     })();
 }
+
 
 
 
@@ -893,7 +892,7 @@ export class DOMFragment {
         }
         else if(typeof node === "object"){
             this.ondelete(this.renderSettings.props);
-            node.parentNode.removeChild(node);
+            if (node) node.parentNode.removeChild(node);
             this.node = null;
         }
     }
@@ -920,8 +919,11 @@ export class DOMFragment {
         }
         else if (typeof styles === 'function') {
             let styleResult = styles();
-            if (typeof styleResult === 'string') node.insertAdjacentHTML('afterbegin',styleResult);
-            else node.insertAdjacentElement('afterbegin',styleResult);
+
+            if (node){
+                if (typeof styleResult === 'string') node.insertAdjacentHTML('afterbegin',styleResult);
+                else node.insertAdjacentElement('afterbegin',styleResult);
+            }
         }
     }
 }
@@ -1059,10 +1061,10 @@ export class StateManager {
         //console.log("setting state");
         if(!this.listener.hasKey('pushToState') && this.defaultStartListenerEventLoop) {
             this.setupSynchronousUpdates();
+            this.pushRecord.pushed.push(JSON.parse(JSON.stringifyWithCircularRefs(updateObj)));
         }
 
         updateObj.stateUpdateTimeStamp = Date.now();
-        this.pushRecord.pushed.push(JSON.parse(JSON.stringifyWithCircularRefs(updateObj)));
         
         if(appendArrs) {
             for(const prop in updateObj) { //3 object-deep array checks to buffer values instead of overwriting
@@ -1119,7 +1121,7 @@ export class StateManager {
     }
 
     //Trigger-only functions on otherwise looping listeners
-    subscribeTrigger(key=undefined,onchange=(key)=>{}) {
+    subscribeTrigger(key=undefined,onchange=(value)=>{}) {
 
         // console.error('SUBSCRIBING')
         if(key) {
@@ -1135,10 +1137,13 @@ export class StateManager {
     //Delete specific trigger functions for a key
     unsubscribeTrigger(key=undefined,sub=0) {
         let idx = undefined;
-        let obj = this.triggers[key].find((o)=>{
-            if(o.idx===sub) {return true;}
-        });
-        if(obj) this.triggers[key].splice(idx,1);
+        let triggers = this.triggers[key]
+        if (triggers){
+            let obj = triggers.find((o)=>{
+                if(o.idx===sub) {return true;}
+            });
+            if(obj) triggers.splice(idx,1);
+        }
     }
 
     //Remove all triggers for a key
